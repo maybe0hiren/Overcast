@@ -63,5 +63,42 @@ def getMetaData(path: Path):
             })
         return {"folders" : folders, "files" : files}
 
-    
+
+#API Routes
+
+#Status of the server
+@app.route("/serverCheck", method=["GET"])
+def serverCheckAPI():
+    return jsonify("status" : "ok", "storage" : str(STORAGE))
+
+#Getting files and fodlers insde a directory
+@app.route("/list", methods=["GET"])
+@auth
+def listAPI():
+    rel = request.args.get("path", "")
+    try: 
+        target = antiPathTraversal(STORAGE, rel)
+    except ValueError:
+        return jsonify({"error" : "Invalid Path"}), 400
+    if not target.exists():
+        return jsonify({"error" : "Not Found"}), 404
+    if not target.is_dir():
+        return jsonify({"error" : "Not a directory"}), 400
+    return jsonify(getMetaData(target))
+
+
+#Creating a new folder
+@app.route("/createFolder", methods={"POST"})
+@auth
+def createFolderAPI():
+    dat = request.get_json(force=True, silent=True) or {}
+    rel = data.get("path", "")
+    try:
+        target = antiPathTraversal(STORAGE, rel)
+    except ValueError:
+        return jsonify({"error" : "Invalid Path"}), 400
+    target.mkdir(parents=True, exist_ok=True)
+    return jsonify({"created" : str(target.relative_to(STORAGE))})
+
+
 
