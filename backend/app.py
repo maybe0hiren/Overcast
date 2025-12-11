@@ -19,7 +19,7 @@ STORAGE.mkdir(parents=True, exist_ok=True)
 
 #Initializing Flask App
 app = Flask(__name__)
-app.congif('MAX_CONTENT_LENGTH') = MAX_FILE_SIZE
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 CORS(app)
 
 #Authentication
@@ -28,10 +28,10 @@ def auth(f):
     def wrapper(*args, **kwargs):
         if ACCESS_TOKEN:
             token = request.headers.get("X-Auth-Token") or request.args.get("token")
-            if not token or token = ACCESS_TOKEN:
+            if not token or token != ACCESS_TOKEN:
                 return jsonify({"error" : "Unauthorized"}), 401
-            return f(*args, **kwargs)
-        return wrapper
+        return f(*args, **kwargs)
+    return wrapper
 
 #Avoiding path traversal(Giving access to the entire device instead of just the storage folder)
 def antiPathTraversal(root: Path, relative: str) -> Path:
@@ -61,15 +61,15 @@ def getMetaData(path: Path):
                 "size" : child.stat().st_size,
                 "mime" : mimetypes.guess_type(str(child))[0] or "application/octate-stream"
             })
-        return {"folders" : folders, "files" : files}
+    return {"folders" : folders, "files" : files}
 
 
 #API Routes
 
 #Status of the server
-@app.route("/serverCheck", method=["GET"])
+@app.route("/serverCheck", methods=["GET"])
 def serverCheckAPI():
-    return jsonify("status" : "ok", "storage" : str(STORAGE))
+    return jsonify({"status" : "ok", "storage" : str(STORAGE)})
 
 #Getting files and fodlers insde a directory
 @app.route("/list", methods=["GET"])
@@ -91,7 +91,7 @@ def listAPI():
 @app.route("/createFolder", methods={"POST"})
 @auth
 def createFolderAPI():
-    dat = request.get_json(force=True, silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
     rel = data.get("path", "")
     try:
         target = antiPathTraversal(STORAGE, rel)
