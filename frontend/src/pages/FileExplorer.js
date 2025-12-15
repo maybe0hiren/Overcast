@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import api from "../api";
 import FileItem from "../components/FileItem";
 import Header from "../components/Header";
+import FileViewer from "../components/FileViewer";
+
 import "./FileExplorer.css";
 
 
@@ -14,6 +17,7 @@ function FileExplorer() {
 
   const [data, setData] = useState({ folders: [], files: [] });
   const [error, setError] = useState("");
+  const [activeFile, setActiveFile] = useState(null);
 
   useEffect(() => {
     load();
@@ -45,7 +49,7 @@ function FileExplorer() {
     <>
     <Header showBack={!!path} onBack={goBack} />
     <div className="explorer">
-      {error && <p className="error">{error}</p>}
+      {error && !activeFile && <p className="error">{error}</p>}
       <div className="file-grid">
         {data.folders.map(f => (
           <FileItem
@@ -61,11 +65,18 @@ function FileExplorer() {
             key={file.path}
             item={file}
             isFolder={false}
-            onOpen={() => {}}
+            onOpen={() => setActiveFile(file)}
           />
         ))}
       </div>
     </div>
+
+    {activeFile && (
+      <FileViewer
+        file={activeFile}
+        onClose={() => setActiveFile(null)}
+        />
+    )}
     </>
   );
 }
