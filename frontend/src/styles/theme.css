@@ -1,0 +1,26 @@
+:root {
+  --bg-main: #0f0f0f;
+  --bg-panel: #1a1a1a;
+  --bg-hover: #2a2a2a;
+  --border: #333;
+  --text-main: #eaeaea;
+  --text-muted: #9a9a9a;
+  --accent: #3b82f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}

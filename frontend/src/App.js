@@ -1,12 +1,14 @@
-import './App.css';
-import FileExplorer from './components/FileExplorer';
+import { Routes, Route } from "react-router-dom";
+import FileExplorer from "./pages/FileExplorer";
+import "./styles/theme.css";
+
 function App() {
   return (
     <>
-    <div style={{ padding : "20px"}}>
-      <h1> CLOUD </h1>
-      <FileExplorer />
-    </div>
+    <Routes>
+      <Route path="/" element={<FileExplorer />} />
+      <Route path="/*" element={<FileExplorer />} />
+    </Routes>
     </>
   );
 }
