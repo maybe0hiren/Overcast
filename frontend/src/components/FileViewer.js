@@ -44,6 +44,17 @@ function FileViewer({ file, onClose }) {
       <div className="viewer">
         <div className="viewer-header">
             <button className="close-btn" onClick={onClose}>✕</button>
+            <button
+              className="download-btn"
+              onClick={() =>
+                window.open(
+                  api.defaults.baseURL +
+                    `/download?path=${encodeURIComponent(file.path)}`
+                )
+              }
+            >
+              ⬇
+            </button>
         </div>
 
         {isVideo() && (

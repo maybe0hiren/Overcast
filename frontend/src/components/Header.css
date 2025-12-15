@@ -51,3 +51,18 @@
 .back-btn:hover {
   background: #222;
 }
+
+.upload-btn {
+  justify-self: end;
+  border: 1px solid #333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ddd;
+  background: #111;
+}
+
+.upload-btn:hover {
+  background: #222;
+}
+

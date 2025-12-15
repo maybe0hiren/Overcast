@@ -11,6 +11,8 @@
 }
 
 .viewer {
+  position: relative;
+
   background: #111;
   border: 1px solid #333;
   border-radius: 12px;
@@ -90,6 +92,7 @@
 
 .viewer-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   height: 40px;
 }

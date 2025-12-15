@@ -1,4 +1,6 @@
 .file-item {
+  position: relative;
+
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 10px;
@@ -30,4 +32,30 @@
 
   max-width: 100%;
   word-break: break-word;
+}
+
+.download-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #333;
+  border-radius: 6px;
+
+  color: #bbb;
+  font-size: 14px;
+
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+}
+
+.download-btn:hover {
+  color: white;
 }
