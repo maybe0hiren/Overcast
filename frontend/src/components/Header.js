@@ -1,6 +1,6 @@
 import "./Header.css";
 
-function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateFolder }) {
+function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateItem }) {
   return (
     <div className="top-header">
       <div className="header-left">
@@ -12,8 +12,8 @@ function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateFolde
       <div className="header-center">☁ CLOUD</div>
 
       <div className="header-right upload-group">
-        <button className="upload-btn" onClick={onCreateFolder}>
-          ➕ Folder
+        <button className="upload-btn" onClick={onCreateItem}>
+          ➕ Item
         </button>
         <label className="upload-btn">
           📄 Files

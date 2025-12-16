@@ -5,6 +5,7 @@ import api from "../api";
 import FileItem from "../components/FileItem";
 import Header from "../components/Header";
 import FileViewer from "../components/FileViewer";
+import NewItemModal from "../components/NewItemModal";
 
 import "./FileExplorer.css";
 
@@ -17,6 +18,7 @@ function FileExplorer() {
   const [data, setData] = useState({ folders: [], files: [] });
   const [error, setError] = useState("");
   const [activeFile, setActiveFile] = useState(null);
+  const [showNewItem, setShowNewItem] = useState(false);
 
   useEffect(() => {
     load();
@@ -44,7 +46,9 @@ function FileExplorer() {
     navigate(parent ? `/${parent}` : "/");
   }
 
-
+  /* ======================
+     UPLOAD FILES
+     ====================== */
   async function uploadFiles(e) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -54,10 +58,7 @@ function FileExplorer() {
     files.forEach(file => {
       formData.append("files", file);
 
-      const rel = path
-        ? `${path}/${file.name}`
-        : file.name;
-
+      const rel = path ? `${path}/${file.name}` : file.name;
       formData.append("relative_path", rel);
     });
 
@@ -69,6 +70,9 @@ function FileExplorer() {
     }
   }
 
+  /* ======================
+     UPLOAD FOLDER
+     ====================== */
   async function uploadFolder(e) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -93,19 +97,35 @@ function FileExplorer() {
     }
   }
 
-  async function createFolder() {
-    const name = prompt("Enter folder name");
-    if (!name) return;
+  /* ======================
+     CREATE FILE OR FOLDER
+     ====================== */
+  function hasExtension(name) {
+    return /\.[^./\\]+$/.test(name);
+  }
 
-    const folderPath = path ? `${path}/${name}` : name;
+  async function createItem(name) {
+    const fullPath = path ? `${path}/${name}` : name;
 
     try {
-      await api.post("/createFolder", {
-        path: folderPath
-      });
+      if (hasExtension(name)) {
+        // Create empty file
+        const formData = new FormData();
+        const emptyFile = new File([""], name);
+
+        formData.append("files", emptyFile);
+        formData.append("relative_path", fullPath);
+
+        await api.post("/upload", formData);
+      } else {
+        // Create folder
+        await api.post("/createFolder", { path: fullPath });
+      }
+
+      setShowNewItem(false);
       load();
     } catch {
-      alert("Failed to create folder");
+      alert("Failed to create item");
     }
   }
 
@@ -116,7 +136,7 @@ function FileExplorer() {
         onBack={goBack}
         onUploadFiles={uploadFiles}
         onUploadFolder={uploadFolder}
-        onCreateFolder={createFolder}
+        onCreateItem={() => setShowNewItem(true)}
       />
 
       <div className="explorer">
@@ -147,6 +167,13 @@ function FileExplorer() {
         <FileViewer
           file={activeFile}
           onClose={() => setActiveFile(null)}
+        />
+      )}
+
+      {showNewItem && (
+        <NewItemModal
+          onCreate={createItem}
+          onClose={() => setShowNewItem(false)}
         />
       )}
     </>
