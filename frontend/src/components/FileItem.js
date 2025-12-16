@@ -1,24 +1,44 @@
-import "./FileItem.css"
+import { useState } from "react";
+import "./FileItem.css";
 
-import api from "../api";
+function FileItem({
+  item,
+  isFolder,
+  onOpen,
+  onDownload,
+  onRename,
+  onDelete
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-function FileItem({ item, isFolder, onOpen }) {
-  function download(e) {
+  function toggleMenu(e) {
     e.stopPropagation();
-    const url = isFolder
-      ? `/downloadFolder?path=${encodeURIComponent(item.path)}`
-      : `/download?path=${encodeURIComponent(item.path)}`;
-    window.open(api.defaults.baseURL + url);
+    setMenuOpen(v => !v);
   }
+
+  function handle(action, e) {
+    e.stopPropagation();
+    setMenuOpen(false);
+    action(item);
+  }
+
   return (
     <div className="file-item" onClick={onOpen}>
+      <button className="menu-btn" onClick={toggleMenu}>⋮</button>
+
+      {menuOpen && (
+        <div className="file-menu">
+          <div onClick={(e) => handle(onDownload, e)}>⬇ Download</div>
+          <div onClick={(e) => handle(onRename, e)}>✏ Rename</div>
+          <div className="danger" onClick={(e) => handle(onDelete, e)}>🗑 Delete</div>
+        </div>
+      )}
+
       <div className="file-icon">
         {isFolder ? "📁" : "📄"}
       </div>
+
       <div className="file-name">{item.name}</div>
-      <button className="download-btn" onClick={download}>
-        ⬇
-      </button>
     </div>
   );
 }
