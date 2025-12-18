@@ -51,20 +51,19 @@ The frontend dynamically decides how to render each file (stream, preview, edit,
 ---
 
 ## 📂 Project Structure
-cloud-storage/
-│
-├── backend/
-│ ├── app.py
-│ ├── requirements.txt
-│ └── storage/ # Created automatically
-│
-├── frontend/
-│ ├── src/
-│ ├── public/
-│ └── package.json
-│
-├── storage/
-└── README.md
+cloud-storage/  
+│  
+├── backend/  
+│ ├── app.py  
+│ ├── requirements.txt  
+│ └── storage/ # Created automatically  
+│  
+├── frontend/  
+│ ├── src/  
+│ ├── public/  
+│ └── package.json  
+│  
+└── README.md  
 
 
 
