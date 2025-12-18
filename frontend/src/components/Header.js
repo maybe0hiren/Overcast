@@ -1,6 +1,12 @@
 import "./Header.css";
 
-function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateItem }) {
+function Header({
+  showBack,
+  onBack,
+  onUploadFiles,
+  onUploadFolder,
+  onCreateItem
+}) {
   return (
     <div className="top-header">
       <div className="header-left">
@@ -15,6 +21,7 @@ function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateItem 
         <button className="upload-btn" onClick={onCreateItem}>
           ➕ Item
         </button>
+
         <label className="upload-btn">
           📄 Files
           <input
@@ -24,6 +31,7 @@ function Header({ showBack, onBack, onUploadFiles, onUploadFolder, onCreateItem 
             onChange={onUploadFiles}
           />
         </label>
+
         <label className="upload-btn">
           📁 Folder
           <input

@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import FileViewer from "../components/FileViewer";
 import NewItemModal from "../components/NewItemModal";
 import RenameModal from "../components/RenameModal";
+import MoveModal from "../components/MoveModal";
 
 import "./FileExplorer.css";
 
@@ -14,30 +15,24 @@ function FileExplorer() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // URL → backend path
   const path = decodeURIComponent(location.pathname.slice(1));
 
   const [data, setData] = useState({ folders: [], files: [] });
-  const [error, setError] = useState("");
   const [activeFile, setActiveFile] = useState(null);
-  const [showNewItem, setShowNewItem] = useState(false);
   const [renameItem, setRenameItem] = useState(null);
+  const [moveItem, setMoveItem] = useState(null);
+  const [showNewItem, setShowNewItem] = useState(false);
 
+  /* ======================
+     LOAD DIRECTORY
+     ====================== */
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
 
   async function load() {
-    try {
-      const res = await api.get("/list", {
-        params: { path }
-      });
-      setData(res.data);
-      setError("");
-    } catch {
-      setError("Failed to load files");
-    }
+    const res = await api.get("/list", { params: { path } });
+    setData(res.data);
   }
 
   /* ======================
@@ -51,57 +46,6 @@ function FileExplorer() {
     if (!path) return;
     const parent = path.split("/").slice(0, -1).join("/");
     navigate(parent ? `/${parent}` : "/");
-  }
-
-  /* ======================
-     DOWNLOAD
-     ====================== */
-  function downloadItem(item) {
-    const url = item.mime
-      ? `/download?path=${encodeURIComponent(item.path)}`
-      : `/downloadFolder?path=${encodeURIComponent(item.path)}`;
-
-    window.open(api.defaults.baseURL + url);
-  }
-
-  /* ======================
-     DELETE
-     ====================== */
-  async function deleteItem(item) {
-    if (!window.confirm(`Delete "${item.name}"?`)) return;
-
-    try {
-      await api.post("/delete", { path: item.path });
-      setActiveFile(null);
-      load();
-    } catch {
-      alert("Delete failed");
-    }
-  }
-
-  /* ======================
-     RENAME
-     ====================== */
-  function startRename(item) {
-    setRenameItem(item);
-  }
-
-  async function confirmRename(newName) {
-    const oldPath = renameItem.path;
-    const parts = oldPath.split("/");
-    parts.pop();
-    const newPath = [...parts, newName].filter(Boolean).join("/");
-
-    try {
-      await api.post("/renameMove", {
-        old_path: oldPath,
-        new_path: newPath
-      });
-      setRenameItem(null);
-      load();
-    } catch {
-      alert("Rename failed");
-    }
   }
 
   /* ======================
@@ -119,13 +63,9 @@ function FileExplorer() {
       formData.append("relative_path", rel);
     });
 
-    try {
-      await api.post("/upload", formData);
-      load();
-      e.target.value = null;
-    } catch {
-      alert("File upload failed");
-    }
+    await api.post("/upload", formData);
+    e.target.value = null;
+    load();
   }
 
   /* ======================
@@ -145,13 +85,9 @@ function FileExplorer() {
       formData.append("relative_path", rel);
     });
 
-    try {
-      await api.post("/upload", formData);
-      load();
-      e.target.value = null;
-    } catch {
-      alert("Folder upload failed");
-    }
+    await api.post("/upload", formData);
+    e.target.value = null;
+    load();
   }
 
   /* ======================
@@ -164,28 +100,83 @@ function FileExplorer() {
   async function createItem(name) {
     const fullPath = path ? `${path}/${name}` : name;
 
-    try {
-      if (hasExtension(name)) {
-        // Create empty file
-        const formData = new FormData();
-        const emptyFile = new File([""], name, { type: "text/plain" });
-
-        formData.append("files", emptyFile);
-        formData.append("relative_path", fullPath);
-
-        await api.post("/upload", formData);
-      } else {
-        // Create folder
-        await api.post("/createFolder", { path: fullPath });
-      }
-
-      setShowNewItem(false);
-      load();
-    } catch {
-      alert("Failed to create item");
+    if (hasExtension(name)) {
+      const formData = new FormData();
+      const emptyFile = new File([""], name);
+      formData.append("files", emptyFile);
+      formData.append("relative_path", fullPath);
+      await api.post("/upload", formData);
+    } else {
+      await api.post("/createFolder", { path: fullPath });
     }
+
+    setShowNewItem(false);
+    load();
   }
 
+  /* ======================
+     DOWNLOAD
+     ====================== */
+  function downloadItem(item) {
+    const url = item.mime
+      ? `/download?path=${encodeURIComponent(item.path)}`
+      : `/downloadFolder?path=${encodeURIComponent(item.path)}`;
+
+    window.open(api.defaults.baseURL + url);
+  }
+
+  /* ======================
+     DELETE
+     ====================== */
+  async function deleteItem(item) {
+    if (!window.confirm(`Delete "${item.name}"?`)) return;
+    await api.post("/delete", { path: item.path });
+    load();
+  }
+
+  /* ======================
+     RENAME
+     ====================== */
+  function startRename(item) {
+    setRenameItem(item);
+  }
+
+  async function confirmRename(newName) {
+    const oldPath = renameItem.path;
+    const base = oldPath.split("/").slice(0, -1).join("/");
+    const newPath = base ? `${base}/${newName}` : newName;
+
+    await api.post("/renameMove", {
+      old_path: oldPath,
+      new_path: newPath
+    });
+
+    setRenameItem(null);
+    load();
+  }
+
+  /* ======================
+     MOVE
+     ====================== */
+  function startMove(item) {
+    setMoveItem(item);
+  }
+
+  async function confirmMove(dest) {
+    const newPath = dest ? `${dest}/${moveItem.name}` : moveItem.name;
+
+    await api.post("/renameMove", {
+      old_path: moveItem.path,
+      new_path: newPath
+    });
+
+    setMoveItem(null);
+    load();
+  }
+
+  /* ======================
+     RENDER
+     ====================== */
   return (
     <>
       <Header
@@ -197,8 +188,6 @@ function FileExplorer() {
       />
 
       <div className="explorer">
-        {error && !activeFile && <p className="error">{error}</p>}
-
         <div className="file-grid">
           {data.folders.map(f => (
             <FileItem
@@ -208,6 +197,7 @@ function FileExplorer() {
               onOpen={() => openFolder(f.name)}
               onDownload={downloadItem}
               onRename={startRename}
+              onMove={startMove}
               onDelete={deleteItem}
             />
           ))}
@@ -220,6 +210,7 @@ function FileExplorer() {
               onOpen={() => setActiveFile(file)}
               onDownload={downloadItem}
               onRename={startRename}
+              onMove={startMove}
               onDelete={deleteItem}
             />
           ))}
@@ -245,6 +236,14 @@ function FileExplorer() {
           item={renameItem}
           onClose={() => setRenameItem(null)}
           onConfirm={confirmRename}
+        />
+      )}
+
+      {moveItem && (
+        <MoveModal
+          currentPath={path}
+          onClose={() => setMoveItem(null)}
+          onConfirm={confirmMove}
         />
       )}
     </>

@@ -7,6 +7,7 @@ function FileItem({
   onOpen,
   onDownload,
   onRename,
+  onMove,
   onDelete
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -30,6 +31,7 @@ function FileItem({
         <div className="file-menu">
           <div onClick={(e) => handle(onDownload, e)}>⬇ Download</div>
           <div onClick={(e) => handle(onRename, e)}>✏ Rename</div>
+          <div onClick={(e) => handle(onMove, e)}>📁 Move</div>
           <div className="danger" onClick={(e) => handle(onDelete, e)}>🗑 Delete</div>
         </div>
       )}
