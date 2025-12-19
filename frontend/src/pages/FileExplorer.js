@@ -22,10 +22,9 @@ function FileExplorer() {
   const [renameItem, setRenameItem] = useState(null);
   const [moveItem, setMoveItem] = useState(null);
   const [showNewItem, setShowNewItem] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
-  /* ======================
-     LOAD DIRECTORY
-     ====================== */
+
   useEffect(() => {
     load();
   }, [path]);
@@ -35,9 +34,7 @@ function FileExplorer() {
     setData(res.data);
   }
 
-  /* ======================
-     NAVIGATION
-     ====================== */
+
   function openFolder(name) {
     navigate(`/${path ? `${path}/` : ""}${name}`);
   }
@@ -48,9 +45,6 @@ function FileExplorer() {
     navigate(parent ? `/${parent}` : "/");
   }
 
-  /* ======================
-     UPLOAD FILES
-     ====================== */
   async function uploadFiles(e) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -63,14 +57,28 @@ function FileExplorer() {
       formData.append("relative_path", rel);
     });
 
-    await api.post("/upload", formData);
-    e.target.value = null;
-    load();
+    try {
+      setUploadProgress(0);
+
+      await api.post("/upload", formData, {
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percent);
+        }
+      });
+
+      load();
+    } catch {
+      alert("File upload failed");
+    } finally {
+      setTimeout(() => setUploadProgress(null), 500);
+      e.target.value = null;
+    }
   }
 
-  /* ======================
-     UPLOAD FOLDER
-     ====================== */
+
   async function uploadFolder(e) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -79,20 +87,36 @@ function FileExplorer() {
 
     files.forEach(file => {
       formData.append("files", file);
+
       const rel = path
         ? `${path}/${file.webkitRelativePath}`
         : file.webkitRelativePath;
+
       formData.append("relative_path", rel);
     });
 
-    await api.post("/upload", formData);
-    e.target.value = null;
-    load();
+    try {
+      setUploadProgress(0);
+
+      await api.post("/upload", formData, {
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percent);
+        }
+      });
+
+      load();
+    } catch {
+      alert("Folder upload failed");
+    } finally {
+      setTimeout(() => setUploadProgress(null), 500);
+      e.target.value = null;
+    }
   }
 
-  /* ======================
-     CREATE FILE / FOLDER
-     ====================== */
+
   function hasExtension(name) {
     return /\.[^./\\]+$/.test(name);
   }
@@ -114,9 +138,6 @@ function FileExplorer() {
     load();
   }
 
-  /* ======================
-     DOWNLOAD
-     ====================== */
   function downloadItem(item) {
     const url = item.mime
       ? `/download?path=${encodeURIComponent(item.path)}`
@@ -125,18 +146,13 @@ function FileExplorer() {
     window.open(api.defaults.baseURL + url);
   }
 
-  /* ======================
-     DELETE
-     ====================== */
+
   async function deleteItem(item) {
     if (!window.confirm(`Delete "${item.name}"?`)) return;
     await api.post("/delete", { path: item.path });
     load();
   }
 
-  /* ======================
-     RENAME
-     ====================== */
   function startRename(item) {
     setRenameItem(item);
   }
@@ -155,9 +171,6 @@ function FileExplorer() {
     load();
   }
 
-  /* ======================
-     MOVE
-     ====================== */
   function startMove(item) {
     setMoveItem(item);
   }
@@ -174,9 +187,6 @@ function FileExplorer() {
     load();
   }
 
-  /* ======================
-     RENDER
-     ====================== */
   return (
     <>
       <Header
@@ -216,7 +226,24 @@ function FileExplorer() {
           ))}
         </div>
       </div>
+      {uploadProgress !== null && (
+        <div className="upload-toast">
+          <div className="upload-toast-title">
+            Uploading…
+          </div>
 
+          <div className="upload-toast-bar">
+            <div
+              className="upload-toast-bar-fill"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+
+          <div className="upload-toast-percent">
+            {uploadProgress}%
+          </div>
+        </div>
+      )}
       {activeFile && (
         <FileViewer
           file={activeFile}
