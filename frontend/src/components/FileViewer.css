@@ -128,3 +128,11 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.pdf-frame {
+  flex: 1;
+  border: none;
+  width: 100%;
+  height: 100%;
+  background: black;
+}
