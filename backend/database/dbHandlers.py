@@ -141,3 +141,19 @@ def editPath(uniqueID, newPath, newName):
 
     conn.commit()
     conn.close()
+
+
+def updateLastEdited(uniqueID):
+    conn = getConnection()
+    cursor = conn.cursor()
+
+    currTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.execute("""
+        UPDATE Files
+        SET LastEdited = ?
+        WHERE UniqueID = ?
+    """, (currTime, uniqueID))
+
+    conn.commit()
+    conn.close()

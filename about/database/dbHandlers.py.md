@@ -5,3 +5,4 @@
 4. **deleteFile(uniqueID)**: Moves the file into "Trash"
 5. **makeLink(uniqueID)**: Retrieves the "link" column of the row
 6. **editPath(uniqueID, newPath, newName)**: Changes the path of the file
+7. **updateLastEdited(uniqueID)**: Update the last edited column of the provided UID
