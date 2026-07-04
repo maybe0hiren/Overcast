@@ -52,6 +52,35 @@ def getID(filePath, fileName):
         return result[0]
     return None
 
+def getValue(uniqueID: str, column: str):
+    allowed_columns = {
+        "UniqueID",
+        "FileName",
+        "FilePath",
+        "LastEdited",
+        "Format",
+        "PreviewPath",
+        "Link",
+        "Encryption"
+    }
+
+    if column not in allowed_columns:
+        raise ValueError(f"Invalid column name: {column}")
+
+    conn = getConnection()
+    cursor = conn.cursor()
+
+    cursor.execute(f"""
+        SELECT {column}
+        FROM Files
+        WHERE UniqueID = ?
+    """, (uniqueID,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    return row[0] if row else None
+
 
 def addFile(filePath, fileName, encryption, uniqueID=None):
     if uniqueID is None:
@@ -117,27 +146,40 @@ def makeLink(uniqueID):
     return None
 
 
-def editPath(uniqueID, newPath, newName):
+def editPath(uniqueID, newPath, newName=None):
     conn = getConnection()
     cursor = conn.cursor()
 
-    newFormat = os.path.splitext(newName)[1].lstrip(".")
     lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    cursor.execute("""
-        UPDATE Files
-        SET FilePath = ?,
-            FileName = ?,
-            Format = ?,
-            LastEdited = ?
-        WHERE UniqueID = ?
-    """, (
-        newPath,
-        newName,
-        newFormat,
-        lastEdited,
-        uniqueID
-    ))
+    if newName is None:
+        cursor.execute("""
+            UPDATE Files
+            SET FilePath = ?,
+                LastEdited = ?
+            WHERE UniqueID = ?
+        """, (
+            newPath,
+            lastEdited,
+            uniqueID
+        ))
+    else:
+        newFormat = os.path.splitext(newName)[1].lstrip(".")
+
+        cursor.execute("""
+            UPDATE Files
+            SET FilePath = ?,
+                FileName = ?,
+                Format = ?,
+                LastEdited = ?
+            WHERE UniqueID = ?
+        """, (
+            newPath,
+            newName,
+            newFormat,
+            lastEdited,
+            uniqueID
+        ))
 
     conn.commit()
     conn.close()
@@ -157,3 +199,24 @@ def updateLastEdited(uniqueID):
 
     conn.commit()
     conn.close()
+
+def pathExists(filePath: str) -> bool:
+    conn = getConnection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT EXISTS(
+            SELECT 1
+            FROM Files
+            WHERE FilePath = ?
+        )
+    """, (filePath,))
+
+    exists = bool(cursor.fetchone()[0])
+
+    conn.close()
+    return exists
+
+
+
+makeTable()

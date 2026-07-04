@@ -1,0 +1,2 @@
+1. **trash(UID: str)**: set the location to "trash/" in the main table [[dbHandlers.py]] and add the entry in trash table of the database [[dbTrashHandlers.py]]
+2. **restore(UID: str)**: resets the location to the suitable location in the main table [[dbHandlers.py]]  and erases the row from trash table [[dbTrashHandlers.py]] 
