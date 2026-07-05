@@ -26,8 +26,7 @@ def makeTable():
             LastEdited TEXT NOT NULL,
             Format TEXT,
             PreviewPath TEXT,
-            Link TEXT,
-            Encryption TEXT
+            Link TEXT
         )
     """)
 
@@ -61,7 +60,6 @@ def getValue(uniqueID: str, column: str):
         "Format",
         "PreviewPath",
         "Link",
-        "Encryption"
     }
 
     if column not in allowed_columns:
@@ -82,11 +80,10 @@ def getValue(uniqueID: str, column: str):
     return row[0] if row else None
 
 
-def addFile(filePath, fileName, encryption, uniqueID=None):
+def addFile(filePath, fileName, fileFormat, uniqueID=None):
     if uniqueID is None:
-        uniqueID = str(uuid.uuid4())
+        newUniqueID = str(uuid.uuid4())
 
-    fileFormat = os.path.splitext(fileName)[1].lstrip(".")
     previewPath = getPreview(filePath, fileName)      # Function assumed to exist
     lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -95,23 +92,25 @@ def addFile(filePath, fileName, encryption, uniqueID=None):
 
     cursor.execute("""
         INSERT INTO Files
-        (UniqueID, FileName, FilePath, LastEdited, Format, PreviewPath, Link, Encryption)
+        (UniqueID, FileName, FilePath, LastEdited, Format, PreviewPath, Link)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        uniqueID,
+        newUniqueID,
         fileName,
         filePath,
         lastEdited,
         fileFormat,
         previewPath,
         None,
-        encryption
     ))
 
     conn.commit()
     conn.close()
 
-    return uniqueID
+    if uniqueID is None:
+        return newUniqueID
+    else:
+        return uniqueID
 
 
 def deleteFile(uniqueID):

@@ -1,0 +1,1 @@
+1. **createTextFile(fileName: str, filePath: str)**: Sets up a new text file [[textFileHandlers.py]] [[stringPlay.py]] [[dbHandlers.py]] 

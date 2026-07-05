@@ -27,5 +27,12 @@ def writeFile(UID: str, fileExt: str, updatedFile):
         file.write(updatedFile.read())
     dbHandlers.updateLastEdited(UID)
     
-    return("Success")
+    return 0
+
+def saveToDisk(UID: str, fileExt: str):
+    filePath = Path(getFilePath(UID, fileExt))
+    filePath.parent.mkdir(parents=True, exist_ok=True)
+    filePath.touch(exist_ok=True)
+    return 0
+
 
