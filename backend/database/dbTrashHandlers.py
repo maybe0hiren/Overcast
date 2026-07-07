@@ -27,6 +27,7 @@ def makeTable():
 
     conn.commit()
     conn.close()
+    return 0
 
 def getValue(uid: str, column: str):
     allowed_columns = {
@@ -67,6 +68,7 @@ def trashHandeling(uid: str, lastLoc: str):
 
     conn.commit()
     conn.close()
+    return 0
 
 
 def restoreHandeling(uid: str):
@@ -111,6 +113,7 @@ def clearning():
 
     conn.commit()
     conn.close()
+    return 0
 
 
 if __name__ == "__main__":

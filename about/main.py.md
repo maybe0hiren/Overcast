@@ -1,1 +1,3 @@
 1. **createTextFile(fileName: str, filePath: str)**: Sets up a new text file [[textFileHandlers.py]] [[stringPlay.py]] [[dbHandlers.py]] 
+2. **moveToTrash(fileName: str, filePath: str)**: Gets the UID [[dbHandlers.py]]. Updates the filePath entries of mainDB [[dbHandlers.py]] and adds new entry to trashDB [[trashHandeling.py]] 
+3. **openFile(fileName: str, fileName: str)**: gets the UID and file format of the file [[dbHandlers.py]]. return the file from storage [[(dot)env]]. 

@@ -32,6 +32,7 @@ def makeTable():
 
     conn.commit()
     conn.close()
+    return 0
 
 
 def getID(filePath, fileName):
@@ -125,6 +126,7 @@ def deleteFile(uniqueID):
 
     conn.commit()
     conn.close()
+    return 0
 
 
 def makeLink(uniqueID):
@@ -179,6 +181,7 @@ def editPath(uniqueID, newPath, newName=None):
             lastEdited,
             uniqueID
         ))
+    return 0
 
     conn.commit()
     conn.close()
@@ -198,6 +201,7 @@ def updateLastEdited(uniqueID):
 
     conn.commit()
     conn.close()
+    return 0
 
 def pathExists(filePath: str) -> bool:
     conn = getConnection()
