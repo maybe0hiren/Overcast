@@ -21,10 +21,10 @@ def readFile(UID: str, fileExt: str):
         return file
 
 
-def writeFile(UID: str, fileExt: str, updatedFile):
+def writeFile(UID: str, fileExt: str, content: str):
     filePath = getFilePath(UID, fileExt)
     with open(filePath, "w") as file:
-        file.write(updatedFile.read())
+        file.write(content)
     dbHandlers.updateLastEdited(UID)
     
     return 0

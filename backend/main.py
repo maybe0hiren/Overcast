@@ -11,7 +11,7 @@ import database.dbHandlers
 import database.dbTrashHandlers
 
 
-def createTextFile(fileName: str, filePath: str):
+def createTextFile(fileName: str, filePath: str, content: str = None):
     print("creatTextFile() called")
     # safety check
     if not fileName or not filePath:
@@ -28,8 +28,17 @@ def createTextFile(fileName: str, filePath: str):
     if status != 0:
         return -1
     
+    # write content to file
+    if content != None:
+        status = textFileHandlers.writeFile(UID, fileFormat, content)
+        if status != 0:
+            print("Error writing to file")
+            return -1
+
     # add entry to main DB
     UID = dbHandlers.addFile(filePath, fileName, fileFormat, UID)
+    if UID != -1:
+        return 0
 
 def moveToTrash(fileName: str, filePath: str): 
     print("moveToTrash() called")
@@ -87,3 +96,31 @@ def openFile(fileName: str, filePath: str):
     return file
 
 
+def editTextFile(fileName: str, filePath: str, content: str):
+    # safety check
+    if not fileName or not filePath or not content:
+        print("Missing values")
+        return -1
+    
+    # getUID
+    UID = dbHandlers.getID(filePath, fileName)
+
+    # get file format
+    fileFormat = dbHandlers.getValue(UID, "Format")
+    # create the file if it doesn not exist
+    if UID == None:
+        status = createTextFile(fileName, filePath, content)
+        if status != 0:
+            print("Error creating file")
+            return -1
+    
+    # write if file already exists
+    status = textFileHandlers.writeFile(UID, fileFormat, content)
+    if status != 0:
+        print("Error writing to file")
+        return -1
+    
+    return 0
+    
+
+        
