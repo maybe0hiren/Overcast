@@ -1,5 +1,9 @@
 import os
 from pathlib import Path
+
+from werkzeug.datastructures import FileStorage # gives usable file datatype
+from werkzeug.utils import secure_filename # extracts name from path
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -10,6 +14,7 @@ import functions.stringPlay
 import database.dbHandlers
 import database.dbTrashHandlers
 
+#-------------- Text -----------------------------
 
 def createTextFile(fileName: str, filePath: str, content: str = None):
     print("creatTextFile() called")
@@ -40,31 +45,8 @@ def createTextFile(fileName: str, filePath: str, content: str = None):
     if UID != -1:
         return 0
 
-def moveToTrash(fileName: str, filePath: str): 
-    print("moveToTrash() called")
-    status = 0
-    
-    # generate the UID of the file
-    UID = dbHandlers.getID(filePath, fileName)
-    if UID is None:
-        print("Error getting UID")
-        return -1
 
-    # chage the path in main database
-    status = dbHandlers.editPath(UID, "trash/")
-    if status != 0:
-        print ("Error mainDB")
-        return -1
-
-    # make entry in the trash DB
-    status = dbTrashHandlers.trashHandeling(UID, filePath)
-    if status != 0:
-        print ("Error trashDB")
-        return -1
-
-    return 0
-
-
+# Check Important Notes (2)
 def openFile(fileName: str, filePath: str):
     print("openFile() called")
 
@@ -75,6 +57,9 @@ def openFile(fileName: str, filePath: str):
     
     # get UID for the file
     UID = dbHandlers.getID(filePath, fileName)
+    if UID is None:
+        print("Error getting UID")
+        return -1
 
     # get the format
     fileFormat = dbHandlers.getValue(UID, "Format")
@@ -89,7 +74,7 @@ def openFile(fileName: str, filePath: str):
         return -1
     
     file = Path(storage)/fileName
-    if not file:
+    if not file.exists():
         print("Error: File missing in storage")
         return -1
     
@@ -122,5 +107,115 @@ def editTextFile(fileName: str, filePath: str, content: str):
     
     return 0
     
+#-------------- Image -----------------------------
+def openImage(fileName: str, filePath: str):
+    print("openImage() called")
+    # get UID and format
+    UID = dbHandlers.getID(filePath, fileName)
+    fileFormat = dbHandlers.getValue(UID, "Format")
+    if not UID or not fileFormat:
+        print("Error: file does not exist")
+        return -1
 
-        
+    # fetch the file and return
+    file = Path(filePath) / f"{UID}.{fileFormat}"
+    if not file.exists():
+        print("Error: file nor on disk")
+        return -1
+    
+    return file        
+
+
+
+#-------------- Common -----------------------------
+
+def moveToTrash(fileName: str, filePath: str): 
+    print("moveToTrash() called")
+    status = 0
+    
+    # generate the UID of the file
+    UID = dbHandlers.getID(filePath, fileName)
+    if UID is None:
+        print("Error getting UID")
+        return -1
+
+    # chage the path in main database
+    status = dbHandlers.editPath(UID, "trash/")
+    if status != 0:
+        print ("Error mainDB")
+        return -1
+
+    # make entry in the trash DB
+    status = dbTrashHandlers.trashHandeling(UID, filePath)
+    if status != 0:
+        print ("Error trashDB")
+        return -1
+
+    return 0
+
+def deleteFromDisk(fileName: str, filePath: str):
+    print("deleteFromDisk() called")
+    status = 0
+    
+    # get the UID
+    UID = dbHandlers.getID(filePath, fileName)
+    if UID is None:
+        print("Error getting ID")
+        return -1
+    #get file format
+    fileFormat = dbHandlers.getValue(UID,"Format")
+
+    # get the file from storage
+    fileOnDisk = UID + fileFormat
+    storage = os.getenv("STORAGE")
+    if not storage:
+        print("Error: Storage missing")
+        return -1
+
+    # delete file from disk
+    file = Path(storage)/fileOnDisk
+    if not file.exists():
+        print("Error: File missing in storage")
+        return -1
+    
+    # Delete from disk
+    file.unlink()
+    status = file.exists()
+    if status == True:
+        print("Error deleting file")
+        return -1
+
+    # clear from trash DB
+    status = dbTrashHandlers.clearing(UID)
+    if status != 0:
+        return -1
+    
+    return 0
+    
+
+def saveNewFile(file: FileStorage, filePath: str):
+    # get storage location
+    storage = os.getenv("STORAGE")
+    if not storage:
+        print("Error: storage not found")
+        return -1
+
+    # extract file name
+    fileName = secure_filename(file.filename)
+    if not fileName:
+        print("File name missing")
+        return -1
+    
+    # save file to disk
+    fileToSave = storage / fileName
+    file.save(fileToSave)
+    fileOnDisk = Path(fileToSave)
+    if not fileOnDisk.exists():
+        print("Error saving the file")
+        return -1
+    
+    # make entry in DB
+    dbHandlers.addFile(filePath, fileOnDisk.stem, fileOnDisk.suffix)
+
+    
+

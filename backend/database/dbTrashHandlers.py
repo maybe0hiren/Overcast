@@ -100,16 +100,21 @@ def restoreHandeling(uid: str):
     return lastLoc
 
 
-def clearning():
-    cutoffDate = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-
+def clearing(UID = None):
     conn = getConnection()
     cursor = conn.cursor()
 
-    cursor.execute(f"""
-        DELETE FROM Trash
-        WHERE TrashedDate < ?
-    """, (cutoffDate,))
+    if UID is None:
+        cutoffDate = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        cursor.execute(f"""
+            DELETE FROM Trash
+            WHERE TrashedDate < ?
+        """, (cutoffDate,))
+    else:
+        cursor.execute(f"""
+            DELETE FROM Trash
+            WHERE UID = ?
+        """, (UID,))
 
     conn.commit()
     conn.close()

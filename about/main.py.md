@@ -2,3 +2,6 @@
 2. **moveToTrash(fileName: str, filePath: str)**: Gets the UID [[dbHandlers.py]]. Updates the filePath entries of mainDB [[dbHandlers.py]] and adds new entry to trashDB [[trashHandeling.py]] 
 3. **openFile(fileName: str, fileName: str)**: gets the UID and file format of the file [[dbHandlers.py]]. return the file from storage [[(dot)env]]. 
 4. **editTextFile(fileName: str, filePath: str, content: str)**: Accepts file name, path and new content. Gets the file UID and Format from [[dbHandlers.py]]. Creates a new file if the file does not exits, ad writes the new content if it exists using [[textFileHandlers.py]]
+5. **openImage(fileName: str, filePath: str)**: retrieves UID and file format from [[dbHandlers.py]] and returns the file.
+6. **deleteFromDisk(fileName: str, filePath: str)**: retrieves UID and format from [[dbHandlers.py]], storage location from [[(dot)env]] and deletes the file from the disk. Then clears the entry from trashDB [[dbTrashHandlers.py]]
+7. **saveNewFile(file: FileStorage, filePath: str)**: Gets the storage location from [[(dot)env]], extracts the file name and saves the file to disk. Then adds entry to the main db [[dbHandlers.py]]
