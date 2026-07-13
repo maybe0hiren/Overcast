@@ -1,7 +1,8 @@
 import sqlite3
 import os
 from datetime import datetime
-import uuid
+
+import functions.stringPlay
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -11,46 +12,84 @@ DB_NAME = os.getenv("DATABASE_PATH")
 
 
 def getConnection():
-    return sqlite3.connect(DB_NAME)
+    try:
+        return sqlite3.connect(DB_NAME)
+
+    except Exception as e:
+        print(f"Failed to connect to database: {e}")
+        return None
 
 
 def makeTable():
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Files (
-            UniqueID TEXT PRIMARY KEY,
-            FileName TEXT NOT NULL,
-            FilePath TEXT NOT NULL,
-            LastEdited TEXT NOT NULL,
-            Format TEXT,
-            PreviewPath TEXT,
-            Link TEXT
-        )
-    """)
+    try:
+        conn = getConnection()
 
-    conn.commit()
-    conn.close()
+        if conn is None:
+            return 0
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Files (
+                UniqueID TEXT PRIMARY KEY,
+                FileName TEXT NOT NULL,
+                FilePath TEXT NOT NULL,
+                LastEdited TEXT NOT NULL,
+                Format TEXT,
+                PreviewPath TEXT,
+                Link TEXT
+            )
+        """)
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to create table: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+
     return 0
 
 
 def getID(filePath, fileName):
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        SELECT UniqueID
-        FROM Files
-        WHERE FilePath = ? AND FileName = ?
-    """, (filePath, fileName))
+    try:
+        conn = getConnection()
 
-    result = cursor.fetchone()
-    conn.close()
+        if conn is None:
+            return None
 
-    if result:
-        return result[0]
-    return None
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT UniqueID
+            FROM Files
+            WHERE FilePath = ? AND FileName = ?
+        """, (filePath, fileName))
+
+        result = cursor.fetchone()
+
+        if result:
+            return result[0]
+
+        return None
+
+    except sqlite3.Error as e:
+        print(f"Failed to get ID: {e}")
+        return None
+
+    finally:
+        if conn:
+            conn.close()
+
 
 def getValue(uniqueID: str, column: str):
     allowed_columns = {
@@ -66,160 +105,298 @@ def getValue(uniqueID: str, column: str):
     if column not in allowed_columns:
         raise ValueError(f"Invalid column name: {column}")
 
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute(f"""
-        SELECT {column}
-        FROM Files
-        WHERE UniqueID = ?
-    """, (uniqueID,))
+    try:
+        conn = getConnection()
 
-    row = cursor.fetchone()
-    conn.close()
+        if conn is None:
+            return None
 
-    return row[0] if row else None
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT {column}
+            FROM Files
+            WHERE UniqueID = ?
+        """, (uniqueID,))
+
+        row = cursor.fetchone()
+
+        return row[0] if row else None
+
+    except sqlite3.Error as e:
+        print(f"Failed to get value: {e}")
+        return None
+
+    finally:
+        if conn:
+            conn.close()
 
 
 def addFile(filePath, fileName, fileFormat, uniqueID=None):
-    if uniqueID is None:
-        newUniqueID = str(uuid.uuid4())
+    conn = None
 
-    previewPath = getPreview(filePath, fileName)      # Function assumed to exist
-    lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        if uniqueID is None:
+            uniqueID = stringPlay.makeUID(filePath, fileName + fileFormat)
 
-    conn = getConnection()
-    cursor = conn.cursor()
+        previewPath = getPreview(filePath, fileName)
+        lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    cursor.execute("""
-        INSERT INTO Files
-        (UniqueID, FileName, FilePath, LastEdited, Format, PreviewPath, Link)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        newUniqueID,
-        fileName,
-        filePath,
-        lastEdited,
-        fileFormat,
-        previewPath,
-        None,
-    ))
+        conn = getConnection()
+        cursor = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        cursor.execute("""
+            INSERT INTO Files
+            (UniqueID, FileName, FilePath, LastEdited, Format, PreviewPath, Link)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (uniqueID, fileName, filePath, lastEdited, fileFormat, previewPath, None))
 
-    if uniqueID is None:
-        return newUniqueID
-    else:
-        return uniqueID
+        conn.commit()
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to add file: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+
+    return uniqueID
 
 
 def deleteFile(uniqueID):
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        UPDATE Files
-        SET FilePath = ?
-        WHERE UniqueID = ?
-    """, ("Trash/", uniqueID))
+    try:
+        conn = getConnection()
 
-    conn.commit()
-    conn.close()
+        if conn is None:
+            return 0
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE Files
+            SET FilePath = ?
+            WHERE UniqueID = ?
+        """, ("Trash/", uniqueID))
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to delete file: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+
     return 0
 
 
 def makeLink(uniqueID):
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        SELECT Link
-        FROM Files
-        WHERE UniqueID = ?
-    """, (uniqueID,))
+    try:
+        conn = getConnection()
 
-    result = cursor.fetchone()
-    conn.close()
+        if conn is None:
+            return None
 
-    if result:
-        return result[0]
-    return None
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT Link
+            FROM Files
+            WHERE UniqueID = ?
+        """, (uniqueID,))
+
+        result = cursor.fetchone()
+
+        if result:
+            return result[0]
+
+        return None
+
+    except sqlite3.Error as e:
+        print(f"Failed to get link: {e}")
+        return None
+
+    finally:
+        if conn:
+            conn.close()
 
 
 def editPath(uniqueID, newPath, newName=None):
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = getConnection()
 
-    if newName is None:
+        if conn is None:
+            return -1
+
+        cursor = conn.cursor()
+
+        if newName is None:
+            newName = getValue(uniqueID, "FileName")
+            newFormat = getValue(uniqueID, "Format")
+            fileName = newName + newFormat
+        else:
+            newFormat = os.path.splitext(newName)[1].lstrip(".")
+            fileName = newName
+
+        if (
+            newPath == getValue(uniqueID, "FilePath")
+            and newName == getValue(uniqueID, "FileName")
+            and newFormat == getValue(uniqueID, "Format")
+        ):
+            print("No changes")
+            return -1
+
+        newUID = stringPlay.makeUID(newPath, fileName)
+        lastEdited = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         cursor.execute("""
             UPDATE Files
-            SET FilePath = ?,
-                LastEdited = ?
-            WHERE UniqueID = ?
-        """, (
-            newPath,
-            lastEdited,
-            uniqueID
-        ))
-    else:
-        newFormat = os.path.splitext(newName)[1].lstrip(".")
-
-        cursor.execute("""
-            UPDATE Files
-            SET FilePath = ?,
+            SET UniqueID = ?,
+                FilePath = ?,
                 FileName = ?,
                 Format = ?,
                 LastEdited = ?
             WHERE UniqueID = ?
-        """, (
-            newPath,
-            newName,
-            newFormat,
-            lastEdited,
-            uniqueID
-        ))
-    return 0
+        """, (newUID, newPath, newName, newFormat, lastEdited, uniqueID))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+
+        return newUID
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to edit path: {e}")
+        return -1
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to edit path: {e}")
+        return -1
+
+    finally:
+        if conn:
+            conn.close()
 
 
 def updateLastEdited(uniqueID):
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    currTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = getConnection()
 
-    cursor.execute("""
-        UPDATE Files
-        SET LastEdited = ?
-        WHERE UniqueID = ?
-    """, (currTime, uniqueID))
+        if conn is None:
+            return 0
 
-    conn.commit()
-    conn.close()
+        cursor = conn.cursor()
+        currTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("""
+            UPDATE Files
+            SET LastEdited = ?
+            WHERE UniqueID = ?
+        """, (currTime, uniqueID))
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to update last edited: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+
     return 0
 
+
 def pathExists(filePath: str) -> bool:
-    conn = getConnection()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        SELECT EXISTS(
-            SELECT 1
-            FROM Files
-            WHERE FilePath = ?
-        )
-    """, (filePath,))
+    try:
+        conn = getConnection()
 
-    exists = bool(cursor.fetchone()[0])
+        if conn is None:
+            return False
 
-    conn.close()
-    return exists
+        cursor = conn.cursor()
 
+        cursor.execute("""
+            SELECT EXISTS(
+                SELECT 1
+                FROM Files
+                WHERE FilePath = ?
+            )
+        """, (filePath,))
+
+        exists = bool(cursor.fetchone()[0])
+
+        return exists
+
+    except sqlite3.Error as e:
+        print(f"Failed to check path: {e}")
+        return False
+
+    finally:
+        if conn:
+            conn.close()
+
+
+def updateUID(oldUID, newUID):
+    conn = None
+
+    try:
+        conn = getConnection()
+
+        if conn is None:
+            return False
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE Files
+            SET UniqueID = ?
+            WHERE UniqueID = ?
+        """, (newUID, oldUID))
+
+        conn.commit()
+
+        # Check if a row was actually updated
+        if cursor.rowcount == 0:
+            return False
+
+        return True
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+
+        print(f"Failed to update UID: {e}")
+        return False
+
+    finally:
+        if conn:
+            conn.close()
 
 
 makeTable()
+

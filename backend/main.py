@@ -67,17 +67,7 @@ def openFile(fileName: str, filePath: str):
         # call openVideoFile()
         continue
 
-    # get the file from storage
-    storage = os.getenv("STORAGE")
-    if not storage:
-        print("Error: Storage missing")
-        return -1
-    
-    file = Path(storage)/fileName
-    if not file.exists():
-        print("Error: File missing in storage")
-        return -1
-    
+    file = textFileHandlers.readFile(UID, fileFormat)
     return file
 
 
@@ -140,13 +130,13 @@ def moveToTrash(fileName: str, filePath: str):
         return -1
 
     # chage the path in main database
-    status = dbHandlers.editPath(UID, "trash/")
-    if status != 0:
+    newUID = dbHandlers.editPath(UID, "trash/")
+    if newUID is None:
         print ("Error mainDB")
         return -1
 
     # make entry in the trash DB
-    status = dbTrashHandlers.trashHandeling(UID, filePath)
+    status = dbTrashHandlers.trashHandeling(newUID, filePath)
     if status != 0:
         print ("Error trashDB")
         return -1
