@@ -1,1 +1,0 @@
-1. Although there is a format column in the main DB, save/use the file names along with the extension to avoid getting the same hash for "folder/code.c" and "folder/code.py" scenarios. Also, dealing with files stored in disk with UID as the file name becomes easier.
