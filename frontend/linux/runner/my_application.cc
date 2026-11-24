@@ -6,6 +6,7 @@
 #endif
 
 #include "flutter/generated_plugin_registrant.h"
+#include "video_player_linux.h"
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -74,6 +75,10 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+  g_autoptr(FlPluginRegistrar) video_player_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(FL_PLUGIN_REGISTRY(view),
+                                                  "OvercastVideoPlayerPlugin");
+  video_player_linux_register_with_registrar(video_player_registrar);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }

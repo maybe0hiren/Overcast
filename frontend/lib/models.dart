@@ -107,3 +107,118 @@ class TrashEntry extends OvercastFile {
         trashedDate: '${json['TrashedDate'] ?? ''}',
       );
 }
+
+class UploadSessionInfo {
+  final String uploadId;
+  final String uid;
+  final String fileName;
+  final String filePath;
+  final int totalSize;
+  final int chunkSize;
+  final int totalChunks;
+  final List<int> receivedChunks;
+  final List<int> missingChunks;
+  final int receivedBytes;
+  final bool resumed;
+  final String status;
+
+  const UploadSessionInfo({
+    required this.uploadId,
+    required this.uid,
+    required this.fileName,
+    required this.filePath,
+    required this.totalSize,
+    required this.chunkSize,
+    required this.totalChunks,
+    required this.receivedChunks,
+    required this.missingChunks,
+    required this.receivedBytes,
+    required this.resumed,
+    required this.status,
+  });
+
+  factory UploadSessionInfo.fromJson(Map<String, dynamic> json) {
+    final received = (json['receivedChunks'] as List?)
+            ?.map((e) => (e as num).toInt())
+            .toList() ??
+        const <int>[];
+    final missing = (json['missingChunks'] as List?)
+            ?.map((e) => (e as num).toInt())
+            .toList() ??
+        const <int>[];
+    return UploadSessionInfo(
+      uploadId: '${json['uploadId'] ?? ''}',
+      uid: '${json['uid'] ?? ''}',
+      fileName: '${json['fileName'] ?? ''}',
+      filePath: '${json['filePath'] ?? 'home/'}',
+      totalSize: (json['totalSize'] as num?)?.toInt() ?? 0,
+      chunkSize: (json['chunkSize'] as num?)?.toInt() ?? (4 * 1024 * 1024),
+      totalChunks: (json['totalChunks'] as num?)?.toInt() ?? 1,
+      receivedChunks: received,
+      missingChunks: missing,
+      receivedBytes: (json['receivedBytes'] as num?)?.toInt() ?? 0,
+      resumed: json['resumed'] == true,
+      status: '${json['status'] ?? 'uploading'}',
+    );
+  }
+}
+
+class ChunkUploadResult {
+  final String uploadId;
+  final int chunkIndex;
+  final int size;
+  final String sha256;
+  final int receivedCount;
+  final int totalChunks;
+
+  const ChunkUploadResult({
+    required this.uploadId,
+    required this.chunkIndex,
+    required this.size,
+    required this.sha256,
+    required this.receivedCount,
+    required this.totalChunks,
+  });
+
+  factory ChunkUploadResult.fromJson(Map<String, dynamic> json) {
+    return ChunkUploadResult(
+      uploadId: '${json['uploadId'] ?? ''}',
+      chunkIndex: (json['chunkIndex'] as num?)?.toInt() ?? 0,
+      size: (json['size'] as num?)?.toInt() ?? 0,
+      sha256: '${json['sha256'] ?? ''}',
+      receivedCount: (json['receivedCount'] as num?)?.toInt() ?? 0,
+      totalChunks: (json['totalChunks'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+class BulkDeleteResult {
+  final String status;
+  final int deletedCount;
+  final List<String> succeeded;
+  final List<Map<String, dynamic>> failed;
+
+  const BulkDeleteResult({
+    required this.status,
+    required this.deletedCount,
+    required this.succeeded,
+    required this.failed,
+  });
+
+  factory BulkDeleteResult.fromJson(Map<String, dynamic> json) {
+    final succ = (json['succeeded'] as List?)
+            ?.map((e) => '$e')
+            .toList() ??
+        const <String>[];
+    final fail = (json['failed'] as List?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    return BulkDeleteResult(
+      status: '${json['status'] ?? 'completed'}',
+      deletedCount: (json['deletedCount'] as num?)?.toInt() ?? succ.length,
+      succeeded: succ,
+      failed: fail,
+    );
+  }
+}

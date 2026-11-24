@@ -2,9 +2,11 @@ import os
 from pathlib import Path
 import tempfile
 
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 import database.dbHandlers as dbHandlers
 
@@ -66,9 +68,6 @@ def writeFile(UID: str, fileExt: str, content: str):
 def saveToDisk(UID: str, fileExt: str):
     filePath = getFilePath(UID, fileExt)
     filePath.parent.mkdir(parents=True, exist_ok=True)
-
-    if filePath.exists():
-        return -1
 
     fd, tempName = tempfile.mkstemp(
         prefix=f".{UID}.",

@@ -1,528 +1,279 @@
 # Overcast
 
-Overcast is a private, LAN-based cloud storage system that turns a local computer into a personal file server.
+**Overcast** is a private, self-hosted, LAN-based cloud storage system that turns a Debian/Linux machine into a personal file server with cross-platform clients for **Linux**, **Windows**, and **Android**.
 
-It provides a cross-platform Flutter application for browsing, uploading, downloading, creating, moving, renaming, and managing files stored on the Overcast server.
+---
 
-The system is designed primarily for private home/LAN environments and does not require a public cloud provider.
+## Key Features
 
-## Description
+### Storage & File Management
+- **Browse & Search:** Navigate virtual folders, search files and directories, and toggle between Grid and List layouts.
+- **Chunked File Uploads:** Large files are automatically split into **4 MiB chunks** (`CHUNK_UPLOAD_SIZE`), uploaded sequentially with per-chunk SHA-256 validation, automatic chunk-level retry on transient failures, session resume support, and atomic server-side assembly with full-file SHA-256 verification.
+- **Non-Blocking Background Transfer Manager:** All uploads, downloads, and bulk ZIP downloads run asynchronously in the background. Users can browse directories, preview media, edit text files, create folders, and manage files while large transfers are in progress.
+- **Upload & Download Cancellation:** Individual active or queued transfers can be cancelled at any time. Cancelling an upload aborts the network request, notifies the backend (`DELETE /api/uploads/<uploadID>`), and purges temporary chunk files. Cancelling a download aborts the stream and removes the partial `.overcast.part` file.
+- **Desktop Multi-File Selection:**
+  - **Single Click / Checkmark:** Select an item.
+  - **Ctrl + Click (or Cmd + Click):** Toggle individual files or folders in the selection.
+  - **Shift + Click:** Select a contiguous range of files/folders.
+  - **Rubber-Band Drag Selection:** Click and drag across the file grid or list to draw a visual selection rectangle and select all intersecting items in real time.
+  - **Keyboard Shortcuts:** `Ctrl + A` (Select All), `Escape` (Clear Selection), `Delete` (Bulk Delete selected items).
+- **Mobile Multi-File Selection:**
+  - **Long Press:** Enter selection mode and select the item.
+  - **Tap:** Toggle additional files and folders while in selection mode.
+- **Bulk File Operations:**
+  - **Bulk Download (Streaming ZIP):** Packages all selected files and folders into a ZIP archive on disk on the backend (without loading files into RAM), streams it to the client through the background transfer manager, and automatically cleans up temporary server ZIP files upon completion or cancellation.
+  - **Bulk Delete:** Moves all selected files and folders (including folder descendants) to Trash (or permanently deletes selected items from Trash) with confirmation and partial-failure reporting.
+- **Built-in Media & Text Tools:**
+  - In-app text file creation and code/text editor.
+  - Inline image viewer, HTTP `Range`-enabled video player, and audio player.
+  - Trash management with one-click restore or permanent deletion.
+  - Obfuscated file-sharing links (`/sharing/<encoded>.file`).
 
-Overcast consists of two main components:
-
-1. **Overcast Backend** — runs on the host/server machine and manages storage, metadata, file operations, and API requests.
-2. **Overcast Frontend** — a Flutter application that provides the user interface for accessing the backend.
-
-The frontend supports Linux, Windows, and Android from the same Flutter codebase.
-
-### Features
-
-- Browse files and folders
-- Upload files
-- Upload folders
-- Download files
-- Rename files
-- Move files
-- Copy files
-- Delete files
-- Restore files where supported
-- Create text files
-- Create folders
-- Handle empty folders
-- File previews
-- Open/view supported media
-- Backend health checking
-- LAN connectivity detection
-- Linux desktop client
-- Windows desktop client
-- Android client
-
-## Tech Stack
-
-### Backend
-
-- Python
-- Gunicorn
-- Nginx
-- SQLite
-- Local filesystem storage
-- systemd
-- UFW
-
-The Python application is served by Gunicorn. Nginx provides the LAN-facing HTTP endpoint and reverse-proxies requests to the backend. SQLite stores metadata while the filesystem stores the actual file contents.
-
-### Frontend
-
-- Flutter
-- Dart
-- HTTP API
-- `file_picker`
-
-Flutter provides a single application codebase for Linux, Windows, and Android.
+---
 
 ## Architecture
 
 ```text
-                    HOME / LAN NETWORK
-                            |
-          +-----------------+-----------------+
-          |                 |                 |
-          v                 v                 v
-       Linux             Windows           Android
-       Client             Client             Client
-          |                 |                 |
-          +-----------------+-----------------+
-                            |
-                            | HTTP
-                            v
-                   +--------------------+
-                   |  Overcast Server   |
-                   |                    |
-                   |  Linux             |
-                   +---------+----------+
-                             |
-                             v
-                         UFW Firewall
-                             |
-                             v
-                           Nginx
-                             |
-                             v
-                         Gunicorn
-                             |
-                             v
-                    Overcast Backend
-                       /          \
-                      v            v
-                  SQLite       File Storage
+                        HOME / LAN NETWORK
+                                |
+          +---------------------+---------------------+
+          |                     |                     |
+          v                     v                     v
+    Linux Desktop        Windows Desktop        Android Mobile
+    Flutter Client       Flutter Client         Flutter Client
+          |                     |                     |
+          +---------------------+---------------------+
+                                |
+                                | HTTP REST API (Chunked Uploads,
+                                | Range Streams, Bulk ZIP Streams)
+                                v
+               +---------------------------------+
+               |     Debian Homelab Server       |
+               |                                 |
+               |  Docker Engine (auto-restart)   |
+               |  +---------------------------+  |
+               |  | overcast-backend          |  |
+               |  | Gunicorn + Flask (Python) |  |
+               |  +-------------+-------------+  |
+               |                |                |
+               |     Persistent Bind Mounts      |
+               |      (./data/ on host OS)       |
+               |     /          |          \     |
+               |    v           v           v    |
+               | SQLite     Permanent     Temp   |
+               | (WAL)       Storage    Chunks & |
+               |   DB        (Files)      ZIPs   |
+               +---------------------------------+
 ```
 
-The frontend communicates with the backend through Nginx. The backend itself runs behind Nginx and is not intended to be directly exposed to other devices.
+---
 
-## Project Structure
+## Repository Structure
 
 ```text
 Overcast/
-|
-+-- backend/
-|   +-- run.py
-|   +-- requirements.txt
-|   +-- storage/
-|   +-- temp/
-|   +-- preview/
-|   +-- env/
-|   `-- ...
-|
-+-- frontend/
-|   +-- lib/
-|   |   +-- main.dart
-|   |   +-- api.dart
-|   |   `-- ...
-|   |
-|   +-- assets/
-|   +-- android/
-|   +-- linux/
-|   +-- windows/
-|   +-- pubspec.yaml
-|   `-- ...
-|
-`-- README.md
+├── backend/
+│   ├── main.py                      # Flask REST API, chunked uploads, bulk ZIP/delete
+│   ├── run.py                       # Direct Python entrypoint
+│   ├── requirements.txt             # Python dependencies (Flask, Gunicorn, Werkzeug, dotenv)
+│   ├── Dockerfile                   # Debian Bookworm Python 3.12 container definition
+│   ├── docker-compose.yml           # Docker Compose service & persistent volume mappings
+│   ├── .env.example                 # Default environment configuration
+│   ├── .dockerignore                # Docker build context exclusions
+│   ├── setup.sh                     # One-command Debian Docker installer & manager
+│   ├── README.md                    # Backend deployment & API documentation
+│   ├── database/
+│   │   ├── dbHandlers.py            # SQLite handlers (Files, Trash, UploadSessions, UploadChunks)
+│   │   └── dbTrashHandlers.py       # Trash table helpers
+│   ├── functions/
+│   │   ├── previewHandlers.py       # Preview lookup helpers
+│   │   ├── stringPlay.py            # SHA-256 UID generation & share link encoding
+│   │   ├── textFileHandlers.py      # Atomic text file read/write utilities
+│   │   └── trashHandeling.py        # Soft-delete and restore wrappers
+│   └── tests/
+│       └── test_overcast_backend.py # Automated backend test suite
+│
+├── frontend/
+│   ├── pubspec.yaml                 # Flutter project manifest
+│   ├── build_overcast.sh            # Master build script for Backend, Linux, and Android
+│   ├── lib/
+│   │   ├── main.dart                # Overcast UI, multi-selection, drag-select, transfer panel
+│   │   ├── api.dart                 # HTTP/Dio client for standard, chunked, and bulk APIs
+│   │   ├── models.dart              # Data models (OvercastFile, UploadSessionInfo, etc.)
+│   │   └── transfer_manager.dart    # Non-blocking background transfer queue & chunk uploader
+│   ├── test/
+│   │   └── widget_test.dart         # Unit and integration tests for models & TransferManager
+│   ├── linux/                       # Linux desktop runner
+│   ├── windows/                     # Windows desktop runner
+│   └── android/                     # Android mobile runner
+│
+├── deployment/
+│   ├── README.md                    # Packaging & cross-platform installer guide
+│   ├── backend/
+│   │   └── package_backend.sh       # Creates dist/backend/Overcast-Backend.zip
+│   ├── linux/
+│   │   ├── package_linux.sh         # Builds Linux client & creates dist/linux/Overcast-Linux.zip
+│   │   └── setup.sh                 # One-command Linux client installer
+│   ├── windows/
+│   │   ├── package_windows.ps1      # Builds Windows client & creates dist/windows/Overcast-Windows.zip
+│   │   └── setup.ps1                # One-command Windows PowerShell client installer
+│   └── android/
+│       └── build.sh                 # One-command Android release APK builder
+│
+├── dist/                            # Generated release packages (Backend, Linux, Windows, Android)
+├── TESTING_REPORT.md                # Comprehensive verification and test report
+└── README.md
 ```
 
-# Setup Guide
+---
 
-## Backend Setup
+## Exact Usage & Deployment Instructions
 
-The server requires:
+### 1. Packaging the Backend
 
-- Linux
-- Python 3
-- Python virtual environment support
-- Nginx
-- SQLite
-- systemd
-- UFW
-
-Install the required packages using the package manager appropriate for the server distribution.
-
-### Python Environment
+From the repository root:
 
 ```bash
-cd /opt/overcast/backend
-python3 -m venv env
-source env/bin/activate
-pip install -r requirements.txt
+./deployment/backend/package_backend.sh
 ```
 
-## Backend Service
+This creates:
+- `dist/backend/Overcast-Backend.zip`
+- `dist/backend/Overcast-Backend.tar.gz`
 
-Overcast is intended to run as a systemd service.
+### 2. Installing the Backend on Debian (One Command)
+
+Transfer `dist/backend/Overcast-Backend.zip` to your Debian laptop, extract it, and run `./setup.sh`:
 
 ```bash
-sudo systemctl start overcast-backend
-sudo systemctl stop overcast-backend
-sudo systemctl restart overcast-backend
-sudo systemctl status overcast-backend
+unzip Overcast-Backend.zip
+cd Overcast-Backend
+./setup.sh
 ```
 
-Enable automatic startup:
+What `./setup.sh` does automatically:
+1. Detects Debian/Ubuntu and installs any missing system utilities (`curl`, `iproute2`, `sqlite3`).
+2. Installs **Docker Engine** and the **Docker Compose plugin** if not already installed.
+3. Enables the Docker service in `systemd` so Overcast starts automatically after every reboot.
+4. Creates `.env` from `.env.example` (preserving any existing `.env` on re-runs).
+5. Prepares persistent host directories under `./data/` (`storage/`, `database/`, `preview/`, `temp/`) and migrates any existing legacy files/SQLite DB if found.
+6. Builds and starts the `overcast-backend` container with `restart: unless-stopped`.
+7. Verifies `/api/health` and prints the Debian server's LAN IP address and connection URLs.
+
+### 3. Starting, Stopping, Updating & Viewing Logs of the Backend
+
+From inside the extracted `Overcast-Backend/` (or `backend/`) directory:
 
 ```bash
-sudo systemctl enable overcast-backend
-sudo systemctl is-enabled overcast-backend
+# Check container status, health check response, and LAN URLs
+./setup.sh status
+
+# Follow live backend container logs
+./setup.sh logs
+
+# Stop the backend container (all persistent files & database remain intact)
+./setup.sh stop
+
+# Start the backend container
+./setup.sh start
+
+# Restart the backend container
+./setup.sh restart
+
+# Rebuild image and update the container while preserving all persistent data
+./setup.sh update
 ```
 
-## Nginx
+---
 
-Nginx provides the LAN-facing HTTP endpoint and forwards requests to the Overcast backend.
+### 4. Building & Packaging the Linux Client
+
+On a Linux machine with Flutter installed, run from the repository root:
 
 ```bash
-sudo systemctl status nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-sudo nginx -t
-sudo systemctl restart nginx
+./deployment/linux/package_linux.sh
 ```
 
-## Firewall
+This runs `flutter pub get`, `flutter analyze`, `flutter test`, builds the Linux release bundle (`flutter build linux --release`), and packages it with the Linux installer script into:
+- `dist/linux/Overcast-Linux.zip`
+- `dist/linux/Overcast-Linux.tar.gz`
 
-Overcast is intended for LAN use.
+### 5. Installing the Linux Client (No Flutter Required)
 
-Allow HTTP access from the local subnet:
+Transfer `dist/linux/Overcast-Linux.zip` to any Linux desktop machine, extract it, and run `./setup.sh`:
 
 ```bash
-sudo ufw allow from <LAN_SUBNET> to any port 80 proto tcp
+unzip Overcast-Linux.zip
+cd Overcast-Linux
+./setup.sh
 ```
 
-Check:
+This installs the self-contained bundle into `~/.local/share/Overcast`, creates the desktop entry at `~/.local/share/applications/overcast.desktop`, installs the app icon, and creates the CLI launcher at `~/.local/bin/overcast`.
 
-```bash
-sudo ufw status
-```
+---
 
-The UFW rule persists across reboots.
+### 6. Building & Packaging the Windows Client
 
-## Backend Health Check
-
-The backend exposes:
-
-```text
-/api/health
-```
-
-Test locally:
-
-```bash
-curl http://127.0.0.1/api/health
-```
-
-From another LAN device:
-
-```bash
-curl http://<OVERCAST_SERVER>/api/health
-```
-
-A healthy response indicates that the backend, database, and storage are available.
-
-# Frontend Setup
-
-Install Flutter and verify the environment:
-
-```bash
-flutter --version
-flutter doctor
-```
-
-Enter the frontend directory:
-
-```bash
-cd frontend
-```
-
-Install dependencies:
-
-```bash
-flutter pub get
-```
-
-Analyze:
-
-```bash
-flutter analyze
-```
-
-The project should have no analyzer errors before creating a release build.
-
-# Linux
-
-## Development
-
-```bash
-flutter run -d linux
-```
-
-## Release
-
-```bash
-flutter build linux --release
-```
-
-The release bundle is:
-
-```text
-build/linux/x64/release/bundle/
-```
-
-The complete bundle must be distributed. Do not distribute only the executable.
-
-Create an archive:
-
-```bash
-tar -czf Overcast-Linux.tar.gz   -C build/linux/x64/release/bundle .
-```
-
-Extract:
-
-```bash
-mkdir -p ~/Applications/Overcast
-tar -xzf Overcast-Linux.tar.gz -C ~/Applications/Overcast
-```
-
-Run the executable contained in the extracted bundle.
-
-# Android
-
-Android builds require the Android SDK, platform tools, build tools, platform, and NDK.
-
-Verify:
-
-```bash
-flutter doctor
-```
-
-Build:
-
-```bash
-flutter build apk --release
-```
-
-APK location:
-
-```text
-build/app/outputs/flutter-apk/app-release.apk
-```
-
-Copy to a release directory:
-
-```bash
-mkdir -p ~/Documents/Cache/temp/Overcast
-
-cp build/app/outputs/flutter-apk/app-release.apk ~/Documents/Cache/temp/Overcast/Overcast-Android.apk
-```
-
-The Android device must be connected to the same LAN as the Overcast server.
-
-# Windows
-
-Windows builds require a Windows development environment with Flutter and the Windows desktop tooling.
+On a Windows machine with Flutter installed, run PowerShell from the repository root:
 
 ```powershell
-flutter pub get
-flutter analyze
-flutter build windows --release
+powershell -ExecutionPolicy Bypass -File .\deployment\windows\package_windows.ps1
 ```
 
-The release application is generated under:
+This runs `flutter pub get`, `flutter analyze`, `flutter build windows --release`, and packages the complete `build\windows\x64\runner\Release\` directory (executable, `flutter_windows.dll`, plugin DLLs, `data\`) together with `setup.ps1` into:
+- `dist\windows\Overcast-Windows.zip`
 
-```text
-build\windows\x64\runner\Release\
-```
+### 7. Installing the Windows Client (No Flutter Required)
 
-Distribute the complete release directory, not only the `.exe`.
-
-Create:
-
-```text
-Overcast-Windows.zip
-```
-
-containing the complete release directory.
-
-# Frontend Server Configuration
-
-The frontend requires the address of the Overcast backend.
-
-Configure it through the application's server/backend setting:
-
-```text
-http://<OVERCAST_SERVER>
-```
-
-Do not hard-code a machine-specific address in documentation.
-
-The API is accessed through the configured server address, for example:
-
-```text
-http://<OVERCAST_SERVER>/api/health
-```
-
-# Connectivity
-
-The frontend checks whether the configured Overcast server is reachable.
-
-Connected:
-
-```text
-Connected to Overcast
-```
-
-Unavailable:
-
-```text
-Not connected to Overcast
-```
-
-If the client cannot connect, verify:
-
-1. The client is on the same LAN.
-2. The server is powered on.
-3. `overcast-backend.service` is running.
-4. Nginx is running.
-5. The firewall allows LAN HTTP traffic.
-6. The frontend has the correct server address.
-
-# Logging
-
-## Backend
-
-Live logs:
-
-```bash
-sudo journalctl -u overcast-backend -f
-```
-
-Last 100 entries:
-
-```bash
-sudo journalctl -u overcast-backend -n 100 --no-pager
-```
-
-Logs since boot:
-
-```bash
-sudo journalctl -u overcast-backend -b
-```
-
-## Nginx
-
-Access log:
-
-```bash
-sudo tail -f /var/log/nginx/access.log
-```
-
-Error log:
-
-```bash
-sudo tail -f /var/log/nginx/error.log
-```
-
-# Troubleshooting
-
-### Backend
-
-```bash
-sudo systemctl status overcast-backend
-sudo systemctl restart overcast-backend
-sudo journalctl -u overcast-backend -n 100 --no-pager
-```
-
-### Nginx
-
-```bash
-sudo systemctl status nginx
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-### Listening Ports
-
-```bash
-sudo ss -tulpn
-```
-
-### Connectivity
-
-From another LAN device:
-
-```bash
-curl -v --connect-timeout 5 http://<OVERCAST_SERVER>/api/health
-```
-
-If this succeeds, the network, firewall, Nginx, and backend path are reachable.
-
-# Development Workflow
-
-## Backend
-
-```bash
-cd backend
-sudo systemctl restart overcast-backend
-sudo journalctl -u overcast-backend -f
-```
-
-## Frontend
-
-```bash
-cd frontend
-flutter pub get
-flutter analyze
-flutter run -d linux
-```
-
-Release builds:
-
-```bash
-flutter build linux --release
-flutter build apk --release
-```
-
-Windows:
+Transfer `Overcast-Windows.zip` to any Windows 10/11 machine, extract it, open PowerShell in the extracted folder, and run:
 
 ```powershell
-flutter build windows --release
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-# Release Files
+This installs all runtime files into `%LOCALAPPDATA%\Programs\Overcast`, verifies the Visual C++ runtime, and creates both **Start Menu** and **Desktop** shortcuts (`Overcast.lnk`).
 
-A convenient release directory can contain:
+---
 
-```text
-Overcast/
-|
-+-- Overcast-Android.apk
-+-- Overcast-Linux.tar.gz
-`-- Overcast-Windows.zip
+### 8. Building the Android Release APK
+
+On a machine with Flutter and the Android SDK installed, run from the repository root:
+
+```bash
+./deployment/android/build.sh
 ```
 
-All client releases are built from the same Flutter frontend project.
+This verifies the Flutter and Android SDKs, resolves dependencies, runs `flutter analyze`, builds the release APK (`flutter build apk --release`), and places the installable APK at:
+- `dist/android/Overcast-Android.apk`
 
-# Design Principles
+---
 
-### LAN First
-Overcast is designed around private local-network storage.
+## Chunked Upload & Bulk Operations Protocol Summary
 
-### Self Hosted
-Files remain on the user's own server instead of a third-party cloud provider.
+### Chunked Upload Flow
+1. **Initialize Session (`POST /api/uploads/init`):**
+   - Client sends `fileName`, `filePath`, `totalSize`, `chunkSize` (default `4194304` bytes / 4 MiB), `totalChunks`, and `resume: true`.
+   - Backend validates path traversal rules, disk space (requiring at least 512 MiB free buffer), and active session limits, then creates a session in SQLite `UploadSessions` and a dedicated chunk directory in `TEMP_STORAGE/chunks/<uploadId>`.
+   - Returns `uploadId` (32-character hex token), `receivedChunks`, and `missingChunks`.
+2. **Upload Individual Chunks (`PUT /api/uploads/<uploadId>/chunks/<chunkIndex>`):**
+   - Client reads one 4 MiB chunk at a time via `RandomAccessFile` without loading the entire file into memory.
+   - Backend validates `0 <= chunkIndex < totalChunks`, verifies exact expected byte length and optional `X-Chunk-SHA256`, writes to a temporary file, fsyncs, and atomically replaces `chunk_<index>.part` via `os.replace()`.
+   - Failed chunks are retried automatically up to 4 times with exponential backoff and status verification (`GET /api/uploads/<uploadId>`).
+3. **Finalize & Assemble (`POST /api/uploads/<uploadId>/complete`):**
+   - Backend verifies all expected chunks exist on disk with exact byte sizes.
+   - Streams all chunks in order into a temporary assembled file while calculating the full SHA-256 digest and checking for mid-assembly cancellation.
+   - Verifies final byte size and SHA-256 checksum, atomically moves the completed file into `STORAGE/<UID>.<format>`, inserts the record into SQLite `Files`, and deletes the temporary chunk directory.
+4. **Cancel Upload (`DELETE /api/uploads/<uploadId>`):**
+   - Marks the session as `cancelled`, aborts assembly if in progress, and deletes all temporary chunks so no partial file ever enters user storage.
 
-### Cross Platform
-Flutter provides a shared application codebase for Linux, Windows, and Android.
+### Bulk Operations
+- **Bulk Download (`POST /api/files/bulk-download`):** Accepts `fileIds`, `folderPaths`, `basePath`, and `archiveName`. Streams selected files and recursive folder contents into a temporary ZIP on disk in 8 MiB chunks (with ZipSlip path sanitization), streams the ZIP back with `Content-Length`, and deletes the temporary ZIP file immediately in a `finally:` block when the stream finishes or is cancelled.
+- **Bulk Delete (`POST /api/files/bulk-delete`):** Accepts `fileIds`, `folderPaths`, and `permanent`. Expands folders to all descendant files and moves items to Trash (or permanently deletes from Trash if `permanent: true`), returning `deletedCount`, `succeeded`, and `failed`.
 
-### Simple Infrastructure
-The backend uses systemd, Nginx, UFW, SQLite, and Gunicorn.
+---
 
-### Native-Like Experience
-The frontend is designed to provide a familiar file-management experience rather than requiring users to interact directly with backend APIs.
+## Android Background Execution Notes
 
-
-**Overcast — Your files. Your network. Your cloud.**
+- On Android, transfers run asynchronously inside the Dart event loop via `TransferManager` while the application is in the foreground or briefly backgrounded.
+- `OvercastHome` registers a `WidgetsBindingObserver` (`didChangeAppLifecycleState`) to notify `TransferManager` when the app transitions between `paused` and `resumed`.
+- Because modern Android versions (Android 12+) restrict indefinite background socket execution for standard activities when the screen is off or the app is swiped away, if the Android OS suspends network sockets during a very large multi-gigabyte upload, the upload session remains persisted on the Overcast backend (`UploadSessions` table + verified `.part` chunks on disk for 24 hours). When the user reopens the app and taps **Retry** in the Transfer Panel, Overcast automatically queries `POST /api/uploads/init` with `resume: true` and resumes from the last completed chunk without re-uploading earlier chunks.

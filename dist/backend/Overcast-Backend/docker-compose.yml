@@ -1,0 +1,29 @@
+services:
+  overcast-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: overcast-backend:latest
+    container_name: overcast-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - STORAGE=/data/storage
+      - PREVIEW_STORAGE=/data/preview
+      - TEMP_STORAGE=/data/temp
+      - DATABASE_PATH=/data/database/database.db
+    ports:
+      - "${OVERCAST_PORT:-80}:8000"
+      - "${OVERCAST_ALT_PORT:-8000}:8000"
+    volumes:
+      - "${OVERCAST_DATA_DIR:-./data}:/data"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
